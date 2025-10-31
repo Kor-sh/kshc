@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>KSHC Editor</title>
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/clike/clike.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&family=Fira+Code&family=D2Coding&family=IBM+Plex+Mono&family=Source+Code+Pro&display=swap" rel="stylesheet">
+<style>
+html, body {
+    height: 100%;
+    margin: 0;
+    background: #ffffff;
+    color: #222;
+    font-family: monospace;
+    display: flex;
+    flex-direction: column;
+}
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f9f9f9;
+  border-bottom: 1px solid #ccc;
+  padding: 8px 16px;
+}
+.toolbar-left {
+  display: flex;
+  gap: 10px;
+}
+.toolbar-right .brand {
+  font-weight: bold;
+  font-size: 15px;
+  color: #555;
+  letter-spacing: 0.5px;
+  user-select: none;
+}
+.toolbar button {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 14px;
+    cursor: pointer;
+}
+.toolbar button:hover {
+    background: #f0f0f0;
+}
+
+.editor-container {
+    flex: 1;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+.CodeMirror {
+    border-radius: 10px;
+    flex: 1;
+    border: 1px solid #ccc;
+    font-size: 15px;
+    height: 100%;
+}
+#modal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    border: 1px solid #aaa;
+    border-radius: 10px;
+    padding: 30px;
+    width: 600px;
+    max-width: 90%;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    z-index: 100;
+}
+#modal h2 {
+    margin-top: 0;
+}
+#modal label {
+    display: block;
+    margin: 12px 0;
+    font-size: 15px;
+}
+#modal select, #modal input {
+    padding: 5px;
+    margin-left: 8px;
+}
+#modal select {
+    width: 200px;
+}
+#modal input[type="number"] {
+    width: 80px;
+}
+.modal-actions {
+    text-align: right;
+    margin-top: 20px;
+}
+.CodeMirror-line {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+.CodeMirror-line > span {
+    display: inline !important;
+}
+#modal label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 15px;
+  margin: 10px 0;
+  gap: 10px;
+}
+#modal select,
+#modal input[type="number"] {
+  flex: 1;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+#modal select:focus,
+#modal input[type="number"]:focus {
+  border-color: #4a90e2;
+  box-shadow: 0 0 4px rgba(74, 144, 226, 0.4);
+  outline: none;
+}
+#modal button {
+  background: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+#modal button:hover {
+  background: #357ab7;
+}
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <div class="toolbar-left">
+    <button onclick="runCode()">📋 복사</button>
+    <button onclick="openSettings()">⚙ 설정</button>
+    <button onclick="saveCode()">💾 저장</button>
+  </div>
+  <div class="toolbar-right">
+    <span class="brand">KSHC Editor</span>
+  </div>
+</div>
+<div class="editor-container">
+    <textarea id="code">
+for(int i = 1; i <= 10; i++)
+	cout << "hello KSHC " << i << " times" << endl
+    </textarea>
+</div>
+<div id="modal">
+    <h2>⚙ 에디터 설정</h2>
+    <label>글꼴:
+      <select id="font">
+        <option value="monospace">monospace (기본)</option>
+        <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+        <option value="'Fira Code', monospace">Fira Code</option>
+        <option value="'Consolas', 'Microsoft Consolas', monospace">Microsoft Consolas</option>
+        <option value="'Source Code Pro', monospace">Adobe Source Code Pro</option>
+        <option value="'IBM Plex Mono', monospace">IBM Plex</option>
+      </select>
+    </label>
+    <label>글자 크기(px):
+        <input type="number" id="size" value="15" min="10" max="40">
+    </label>
+    <label>줄 간격:
+        <input type="number" step="0.1" id="line" value="1.5" min="1" max="3">
+    </label>
+    <div class="modal-actions">
+        <button onclick="closeModal()">닫기</button>
+    </div>
+</div>
+<button id="cookieBtn" style="
+  position: fixed;
+  bottom: 15px;
+  right: 15px;
+  background: #fff3cd;
+  border: 1px solid #e0c97a;
+  border-radius: 6px;
+  padding: 8px 16px;
+  cursor: pointer;
+">
+🍪 쿠키 허용
+</button>
+<div id="toast" style="
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: #ffffff;
+  color: #222;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 12px 18px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  font-size: 14px;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  z-index: 9999;
+">
+  💾 <span id="toast-msg">소스 코드가 저장되었습니다.</span>
+</div>
+<script>
+    function showToast(message, icon="💾") {
+  const toast = document.getElementById('toast');
+  const msg = document.getElementById('toast-msg');
+  msg.textContent = message;
+  toast.firstChild.textContent = icon + " ";
+  toast.style.display = "flex";
+  toast.style.opacity = "1";
+  setTimeout(() => {
+    toast.style.transition = "opacity 0.5s";
+    toast.style.opacity = "0";
+    setTimeout(() => toast.style.display = "none", 500);
+  }, 2000);
+}
+let cookiesAccepted = getCookie("cookiesAccepted") === "1";
+let editor = CodeMirror.fromTextArea(document.getElementById('code'), {
+    mode: "text/x-c++src",
+    theme: "default",
+    lineNumbers: true,
+    indentUnit: 4,
+    tabSize: 4,
+    indentWithTabs: true
+});
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+}
+if (cookiesAccepted) document.getElementById("cookieBtn")?.style.setProperty("display", "none");
+function setCookie(name, value, days) {
+  const d = new Date();
+  d.setTime(d.getTime() + (days*24*60*60*1000));
+  const expires = "expires="+ d.toUTCString();
+  document.cookie = `${name}=${value}; ${expires}; path=/`;
+}
+document.getElementById("cookieBtn").onclick = () => {
+  setCookie("cookiesAccepted", "1", 365);
+  cookiesAccepted = true;
+    showToast("쿠키를 허용되었습니다", "🍪");
+  document.getElementById("cookieBtn").style.display = "none";
+};
+window.onload = () => {
+  if (cookiesAccepted) {
+    document.getElementById("cookieBtn").style.display = "none";
+  }
+};
+function saveCode() {
+  if (!cookiesAccepted) {
+    showToast("쿠키를 허용해야 저장할 수 있습니다", "🍪");
+    return;
+  }
+  localStorage.setItem("kshc_code", editor.getValue());
+  showToast("코드가 저장되었습니다");
+}
+function restoreCode() {
+  if (cookiesAccepted) {
+    const saved = localStorage.getItem("kshc_code");
+    if (saved) editor.setValue(saved);
+  }
+}
+function countIndent(line) {
+    let count = 0;
+    for (let ch of line) {
+        if (ch === '\t') count += 1;
+        else if (ch === ' ') count += 0.25;
+        else break;
+    }
+    return count;
+}
+function runCode() {
+    let lines = editor.getValue().split('\n');
+    lines = lines.filter(l => l.trim() !== '');
+    let indents = lines.map(countIndent);
+    indents.push(0);
+    let output = [];
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].trimEnd();
+        let currIndent = indents[i];
+        let nextIndent = indents[i + 1];
+        if (line.trim().startsWith('#')) {
+            output.push(line);
+            continue;
+        }
+        if (nextIndent > currIndent) output.push(line + " {");
+        else if (nextIndent < currIndent) {
+            output.push(line + ";");
+            for (let j = 0; j < currIndent - nextIndent; j++) output.push("}");
+        } else output.push(line + ";");
+    }
+let finalCode =
+`//made in Kor-sh.github.io/kshc
+#include <iostream>
+#include <algorithm>
+using namespace std;
+int main()
+{
+${output.join('\n')}
+return 0;
+}`;
+    showToast("코드가 복사되었습니다", "🥰");
+    navigator.clipboard.writeText(finalCode)
+        .catch(() => console.error("⚠️ 복사 실패"));
+}
+function openSettings() {
+    if (!cookiesAccepted) {
+        showToast("쿠키를 허용해야 설정을 열 수 있습니다", "🍪");
+        return;
+    }
+    document.getElementById('modal').style.display = 'block';
+}
+function closeModal() {
+    document.getElementById('modal').style.display = 'none';
+}
+function liveUpdate() {
+    const wrapper = editor.getWrapperElement();
+    const font = document.getElementById('font').value;
+    const size = document.getElementById('size').value;
+    const line = document.getElementById('line').value;
+    wrapper.style.fontFamily = font;
+    wrapper.style.fontSize = size + 'px';
+    wrapper.style.lineHeight = line;
+    localStorage.setItem('kshc_font', font);
+    localStorage.setItem('kshc_size', size);
+    localStorage.setItem('kshc_line', line);
+    editor.refresh();
+}
+['font', 'size', 'line'].forEach(id => {
+    document.addEventListener('input', e => {
+        if (e.target.id === id) liveUpdate();
+    });
+});
+window.addEventListener("load", () => {
+  cookiesAccepted = getCookie("cookiesAccepted") === "1";
+  const btn = document.getElementById("cookieBtn");
+  if (cookiesAccepted) btn.style.display = "none";
+  const wrapper = editor.getWrapperElement();
+  const font = localStorage.getItem('kshc_font') || 'monospace';
+  const size = localStorage.getItem('kshc_size') || 15;
+  const line = localStorage.getItem('kshc_line') || 1.5;
+  wrapper.style.fontFamily = font;
+  wrapper.style.fontSize = size + 'px';
+  wrapper.style.lineHeight = line;
+  document.getElementById('font').value = font;
+  document.getElementById('size').value = size;
+  document.getElementById('line').value = line;
+  if (cookiesAccepted) restoreCode();
+    editor.refresh();
+  btn.onclick = () => {
+    setCookie("cookiesAccepted", "1", 365);
+    cookiesAccepted = true;
+    showToast("쿠키를 허용되었습니다", "🍪");
+    btn.style.display = "none";
+  };
+});
+</script>
+</body>
+</html>

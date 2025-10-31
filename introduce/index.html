@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>KSHC Introduce</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
+<style>
+body {
+  background: #fff;
+  color: #222;
+  font-family: 'JetBrains Mono', monospace;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: left;
+}
+pre {
+  background: #f5f5f5;
+  border-radius: 10px;
+  padding: 20px;
+  width: 700px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  font-size: 16px;
+  line-height: 1.4em;
+  white-space: pre-wrap;
+  transition: all 0.6s ease;
+}
+button {
+  margin-top: 20px;
+  background: #4a90e2;
+  border: none;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+button:hover {
+  background: #357ab7;
+}
+.fade {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.5s, transform 0.5s;
+}
+.fade.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+</style>
+</head>
+<body>
+<h2>✨ KSHC가 C++으로 컴파일 하는 방식</h2>
+<pre id="codeBox" class="fade"></pre>
+<script>
+const stages = [
+`int a,b,c 
+scanf("%d %d %d", &a, &b, &c)
+
+if(a*b-c > 0)
+\tprintf("%d",a*b-c)
+else
+\tprintf("0")`,
+`int a,b,c 
+scanf("%d %d %d", &a, &b, &c)
+if(a*b-c > 0)
+\tprintf("%d",a*b-c)
+else
+\tprintf("0")`,
+`int a,b,c;
+scanf("%d %d %d", &a, &b, &c);
+
+if(a*b-c > 0) {
+\tprintf("%d",a*b-c);
+}
+else {
+\tprintf("0");
+}`,
+`//made in Kor-sh.github.io/kshc
+#include <iostream>
+#include <algorithm>
+using namespace std;
+int main()
+{
+int a,b,c;
+scanf("%d %d %d", &a, &b, &c);
+if(a*b-c > 0) {
+\tprintf("%d",a*b-c);
+}
+else {
+\tprintf("0");
+}
+return 0;
+}`
+];
+startAnimation();
+function startAnimation() {
+  const box = document.getElementById('codeBox');
+  let i = 0;
+  box.classList.remove('show');
+  function next() {
+    box.classList.remove('show');
+    setTimeout(() => {
+      box.textContent = stages[i];
+      box.classList.add('show');
+      i++;
+      if (i < stages.length) setTimeout(next, 2500);
+    }, 400);
+  }
+  next();
+}
+</script>
+</body>
+</html>
