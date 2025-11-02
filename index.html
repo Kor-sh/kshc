@@ -158,8 +158,12 @@ html, body {
 </div>
 <div class="editor-container">
     <textarea id="code">
-for(int i = 1; i <= 10; i++)
-	cout << "hello KSHC " << i << " times" << endl</textarea>
+#include <iostream>
+#include <algorithm>
+using namespace std
+int main()
+    for(int i = 1; i <= 10; i++)
+        cout << "hello KSHC " << i << " times" << endl</textarea>
 </div>
 <div id="modal">
     <h2>⚙ 에디터 설정</h2>
@@ -304,14 +308,7 @@ function runCode() {
     }
 let finalCode =
 `//made in Kor-sh.github.io/kshc
-#include <iostream>
-#include <algorithm>
-using namespace std;
-int main()
-{
-${output.join('\n')}
-return 0;
-}`;
+${output.join('\n')}`;
     showToast("코드가 복사되었습니다", "🥰");
     navigator.clipboard.writeText(finalCode)
         .catch(() => console.error("⚠️ 복사 실패"));
