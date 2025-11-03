@@ -287,10 +287,11 @@ function countIndent(line) {
 }
 function runCode() {
     let lines = editor.getValue().split('\n');
-    lines = lines.filter(l => l.trim() !== '');
-    let indents = lines.map(countIndent);
-    indents.push(0);
+    lines = lines.filter(l => l.trim() !== ''); // 빈 줄 제거
+    let indents = lines.map(countIndent);       // 각 줄 들여쓰기 수 계산
+    indents.push(0); // 마지막 줄 보정
     let output = [];
+
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i].trimEnd();
         let currIndent = indents[i];
@@ -299,15 +300,24 @@ function runCode() {
             output.push(line);
             continue;
         }
-        if (nextIndent > currIndent) output.push(line + " {");
+        if (nextIndent > currIndent) {
+            output.push(line + " {");
+        }
         else if (nextIndent < currIndent) {
             output.push(line + ";");
-            for (let j = 0; j < currIndent - nextIndent; j++) output.push("}");
-        } else output.push(line + ";");
+            for (let j = 0; j < currIndent - nextIndent; j++) {
+                output.push("}".padStart((currIndent - j + 0.25), '\t'));
+            }
+        }
+        else {
+            output.push(line + ";");
+        }
     }
-let finalCode =
+
+    let finalCode =
 `//made in Kor-sh.github.io/kshc
 ${output.join('\n')}`;
+
     showToast("코드가 복사되었습니다", "🥰");
     navigator.clipboard.writeText(finalCode)
         .catch(() => console.error("⚠️ 복사 실패"));
