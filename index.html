@@ -306,7 +306,7 @@ function runCode() {
         else if (nextIndent < currIndent) {
             output.push(line + ";");
             for (let j = 0; j < currIndent - nextIndent; j++) {
-                output.push("}".padStart((currIndent - j + 0.25), '\t'));
+                output.push("}".padStart((currIndent - j), '\t'));
             }
         }
         else {
