@@ -139,8 +139,94 @@ html, body {
   cursor: pointer;
   font-size: 14px;
   transition: background 0.2s;
+  margin-left: 8px;
 }
 #modal button:hover {
+  background: #357ab7;
+}
+#fileModal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    border: 1px solid #aaa;
+    border-radius: 10px;
+    padding: 30px;
+    width: 600px;
+    max-width: 90%;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    z-index: 100;
+}
+#fileModal h2 {
+    margin-top: 0;
+}
+#fileModal input {
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 14px;
+}
+#fileList {
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+    margin: 10px 0;
+}
+.file-item {
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+.file-item:hover {
+    background: #f5f5f5;
+}
+.file-item-name {
+    flex: 1;
+}
+.file-item-date {
+    font-size: 12px;
+    color: #999;
+}
+.file-item button {
+    background: #ff6b6b;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 12px;
+}
+.file-item button:hover {
+    background: #ff5252;
+}
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 99;
+}
+.modal-close-btn {
+  background: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+.modal-close-btn:hover {
   background: #357ab7;
 }
 </style>
@@ -148,9 +234,9 @@ html, body {
 <body>
 <div class="toolbar">
   <div class="toolbar-left">
-    <button onclick="runCode()">📋 복사</button>
+    <button onclick="runCode()">📋  복사</button>
     <button onclick="openSettings()">⚙ 설정</button>
-    <button onclick="saveCode()">💾 저장</button>
+    <button onclick="openFileModal()">📁 파일</button>
   </div>
   <div class="toolbar-right">
     <span class="brand">KSHC Editor</span>
@@ -159,11 +245,13 @@ html, body {
 <div class="editor-container">
     <textarea id="code">
 #include <iostream>
+#include <string>
 #include <algorithm>
 using namespace std
 int main()
     cout << "hello KSHC"</textarea>
 </div>
+<div class="modal-overlay" id="modalOverlay"></div>
 <div id="modal">
     <h2>⚙ 에디터 설정</h2>
     <label>글꼴:
@@ -184,6 +272,17 @@ int main()
     </label>
     <div class="modal-actions">
         <button onclick="closeModal()">닫기</button>
+    </div>
+</div>
+<div id="fileModal">
+    <h2>📁 파일 관리</h2>
+    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+        <input type="text" id="fileName" placeholder="파일명을 입력하세요..." onkeyup="filterFiles()" style="flex: 1;">
+        <button onclick="saveCurretFile()" style="background: #4a90e2; color: white; border: none; border-radius: 6px; padding: 6px 14px; cursor: pointer;">💾 저장</button>
+    </div>
+    <div id="fileList"></div>
+    <div class="modal-actions">
+        <button onclick="closeFileModal()" class="modal-close-btn">닫기</button>
     </div>
 </div>
 <button id="cookieBtn" style="
@@ -217,7 +316,10 @@ int main()
   💾 <span id="toast-msg">소스 코드가 저장되었습니다.</span>
 </div>
 <script>
-    function showToast(message, icon="💾") {
+const KSHC_FILES_KEY = 'kshc_files_v2';
+const FILE_EXPIRY_DAYS = 36500;
+
+function showToast(message, icon="💾") {
   const toast = document.getElementById('toast');
   const msg = document.getElementById('toast-msg');
   msg.textContent = message;
@@ -230,6 +332,7 @@ int main()
     setTimeout(() => toast.style.display = "none", 500);
   }, 2000);
 }
+
 let cookiesAccepted = getCookie("cookiesAccepted") === "1";
 let editor = CodeMirror.fromTextArea(document.getElementById('code'), {
     mode: "text/x-c++src",
@@ -239,63 +342,170 @@ let editor = CodeMirror.fromTextArea(document.getElementById('code'), {
     tabSize: 4,
     indentWithTabs: true
 });
+
 function getCookie(name) {
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${name}=`);
   if (parts.length === 2) return parts.pop().split(';').shift();
 }
-if (cookiesAccepted) document.getElementById("cookieBtn")?.style.setProperty("display", "none");
+
 function setCookie(name, value, days) {
   const d = new Date();
   d.setTime(d.getTime() + (days*24*60*60*1000));
   const expires = "expires="+ d.toUTCString();
   document.cookie = `${name}=${value}; ${expires}; path=/`;
 }
-document.getElementById("cookieBtn").onclick = () => {
-  setCookie("cookiesAccepted", "1", 365);
-  cookiesAccepted = true;
-    showToast("쿠키를 허용되었습니다", "🍪");
-  document.getElementById("cookieBtn").style.display = "none";
-};
-window.onload = () => {
-  if (cookiesAccepted) {
-    document.getElementById("cookieBtn").style.display = "none";
-  }
-};
-function saveCode() {
+
+function getAllFiles() {
+  const data = localStorage.getItem(KSHC_FILES_KEY);
+  return data ? JSON.parse(data) : {};
+}
+
+function saveFileData(fileName, code) {
   if (!cookiesAccepted) {
     showToast("쿠키를 허용해야 저장할 수 있습니다", "🍪");
     return;
   }
-  localStorage.setItem("kshc_code", editor.getValue());
-  showToast("코드가 저장되었습니다");
+  const files = getAllFiles();
+  files[fileName] = {
+    code: code,
+    date: new Date().toISOString(),
+    expiry: new Date(Date.now() + FILE_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString()
+  };
+  localStorage.setItem(KSHC_FILES_KEY, JSON.stringify(files));
+  showToast(`"${fileName}" 저장되었습니다`, "💾");
 }
-function restoreCode() {
-  if (cookiesAccepted) {
-    const saved = localStorage.getItem("kshc_code");
-    if (saved) editor.setValue(saved);
+
+function loadFileData(fileName) {
+  const files = getAllFiles();
+  return files[fileName]?.code || null;
+}
+
+function shareFile(fileName) {
+  const files = getAllFiles();
+  const code = files[fileName]?.code;
+  if (code) {
+    // ASCII 0~127 범위 확인
+    const hasNonAscii = /[^\x00-\x7F]/.test(code);
+    if (hasNonAscii) {
+      showToast("한글 등 ASCII 문자 이외는 공유할 수 없습니다", "⚠️");
+      return;
+    }
+    
+    const encoded = btoa(code);
+    const shareUrl = `${window.location.href.split('?')[0]}?code=${encoded}`;
+    navigator.clipboard.writeText(shareUrl);
+    showToast(`"${fileName}" 공유 링크가 복사되었습니다`, "🔗");
   }
 }
-function countIndent(line) {
-    let count = 0;
-    for (let ch of line) {
-        if (ch === '\t') count += 1;
-        else break;
-    }
-    return Math.round(count);
+
+function deleteFileData(fileName) {
+  if (confirm(`"${fileName}"을(를) 삭제하시겠습니까?`)) {
+    const files = getAllFiles();
+    delete files[fileName];
+    localStorage.setItem(KSHC_FILES_KEY, JSON.stringify(files));
+    updateFileList();
+    showToast(`"${fileName}" 삭제되었습니다`, "🗑️");
+  }
 }
 
-function normalizeTabs(line) {
-    let i = 0;
-    while (i < line.length && (line[i] === ' ' || line[i] === '\t')) i++;
-    let indentPart = line.slice(0, i);
-    let rest = line.slice(i);
-    indentPart = indentPart.replace(/ {4}/g, '\t');
-    return indentPart + rest;
+function updateFileList() {
+  const files = getAllFiles();
+  const fileList = document.getElementById('fileList');
+  const fileName = document.getElementById('fileName').value.toLowerCase();
+  
+  fileList.innerHTML = '';
+  
+  Object.keys(files).sort().forEach(name => {
+    if (name.toLowerCase().includes(fileName)) {
+      const item = document.createElement('div');
+      item.className = 'file-item';
+      const date = new Date(files[name].date).toLocaleString('ko-KR');
+      item.innerHTML = `
+        <span class="file-item-name">${name}</span>
+        <span class="file-item-date">${date}</span>
+        <div style="display: flex; gap: 8px; margin-left: 10px;">
+          <button onclick="loadAndCloseFile('${name}')" style="background: #4a90e2; color: white;">열기</button>
+          <button onclick="shareFile('${name}')" style="background: #10b981; color: white;">공유</button>
+          <button onclick="deleteFileData('${name}')">삭제</button>
+        </div>
+      `;
+      fileList.appendChild(item);
+    }
+  });
 }
+
+function loadAndCloseFile(fileName) {
+  const code = loadFileData(fileName);
+  if (code) {
+    editor.setValue(code);
+    closeFileModal();
+    showToast(`"${fileName}" 불러왔습니다`, "📂");
+  }
+}
+
+function filterFiles() {
+  updateFileList();
+}
+
+function saveCurretFile() {
+  const fileName = document.getElementById('fileName').value.trim();
+  if (!fileName) {
+    showToast("파일명을 입력하세요", "⚠️");
+    return;
+  }
+  
+  const invalidChars = /[<>:"/\\|?*\s]/g;
+  if (invalidChars.test(fileName)) {
+    showToast("파일명에 특수문자를 사용할 수 없습니다", "⚠️");
+    return;
+  }
+  
+  saveFileData(fileName, editor.getValue());
+  document.getElementById('fileName').value = '';
+  updateFileList();
+}
+
+function openFileModal() {
+  if (!cookiesAccepted) {
+    showToast("쿠키를 허용해야 파일을 관리할 수 있습니다", "🍪");
+    return;
+  }
+  document.getElementById('fileModal').style.display = 'block';
+  document.getElementById('modalOverlay').style.display = 'block';
+  document.getElementById('fileName').value = '';
+  updateFileList();
+}
+
+function closeFileModal() {
+  document.getElementById('fileModal').style.display = 'none';
+  document.getElementById('modalOverlay').style.display = 'none';
+}
+
+if (cookiesAccepted) document.getElementById("cookieBtn")?.style.setProperty("display", "none");
+document.getElementById("cookieBtn").onclick = () => {
+  setCookie("cookiesAccepted", "1", 365);
+  cookiesAccepted = true;
+  showToast("쿠키를 허용되었습니다", "🍪");
+  document.getElementById("cookieBtn").style.display = "none";
+};
 
 function runCode() {
-    let lines = editor.getValue().split('\n');
+    let code = editor.getValue();
+
+    // 1) /* ... */ 블록 주석(종결자 있는 경우) 제거
+    code = code.replace(/\/\*[\s\S]*?\*\//g, '');
+    // 2) 만약 닫는 '*/'가 없는 '/*'가 남아있다면 그 위치부터 파일 끝까지 삭제
+    const openIdx = code.indexOf('/*');
+    if (openIdx !== -1) {
+      code = code.slice(0, openIdx);
+    }
+    // 3) 혹시 남아있는 stray '*/' 토큰도 제거
+    code = code.replace(/\*\//g, '');
+    // 4) // 라인 주석 제거
+    code = code.replace(/\/\/.*$/gm, '');
+
+    let lines = code.split('\n');
     lines = lines.map(normalizeTabs);
 
     lines = lines.filter(l => l.trim() !== '');
@@ -334,16 +544,21 @@ ${output.join('\n')}`;
     navigator.clipboard.writeText(finalCode)
         .catch(() => console.error("⚠️ 복사 실패"));
 }
+
 function openSettings() {
     if (!cookiesAccepted) {
         showToast("쿠키를 허용해야 설정을 열 수 있습니다", "🍪");
         return;
     }
     document.getElementById('modal').style.display = 'block';
+    document.getElementById('modalOverlay').style.display = 'block';
 }
+
 function closeModal() {
     document.getElementById('modal').style.display = 'none';
+    document.getElementById('modalOverlay').style.display = 'none';
 }
+
 function liveUpdate() {
     const wrapper = editor.getWrapperElement();
     const font = document.getElementById('font').value;
@@ -357,11 +572,31 @@ function liveUpdate() {
     localStorage.setItem('kshc_line', line);
     editor.refresh();
 }
+
+function countIndent(line) {
+    let count = 0;
+    for (let ch of line) {
+        if (ch === '\t') count += 1;
+        else break;
+    }
+    return Math.round(count);
+}
+
+function normalizeTabs(line) {
+    let i = 0;
+    while (i < line.length && (line[i] === ' ' || line[i] === '\t')) i++;
+    let indentPart = line.slice(0, i);
+    let rest = line.slice(i);
+    indentPart = indentPart.replace(/ {4}/g, '\t');
+    return indentPart + rest;
+}
+
 ['font', 'size', 'line'].forEach(id => {
     document.addEventListener('input', e => {
         if (e.target.id === id) liveUpdate();
     });
 });
+
 window.addEventListener("load", () => {
   cookiesAccepted = getCookie("cookiesAccepted") === "1";
   const btn = document.getElementById("cookieBtn");
@@ -376,15 +611,30 @@ window.addEventListener("load", () => {
   document.getElementById('font').value = font;
   document.getElementById('size').value = size;
   document.getElementById('line').value = line;
-  if (cookiesAccepted) restoreCode();
-    editor.refresh();
+  editor.refresh();
   btn.onclick = () => {
     setCookie("cookiesAccepted", "1", 365);
     cookiesAccepted = true;
     showToast("쿠키를 허용되었습니다", "🍪");
     btn.style.display = "none";
   };
+
+  const params = new URLSearchParams(window.location.search);
+  const sharedCode = params.get('code');
+  if (sharedCode) {
+    try {
+      const decodedCode = atob(sharedCode);
+      editor.setValue(decodedCode);
+      showToast("공유된 코드를 불러왔습니다", "🔗");
+    } catch (e) {
+      showToast("잘못된 공유 링크입니다", "⚠️");
+    }
+  }
 });
+document.getElementById('modalOverlay').onclick = () => {
+  closeModal();
+  closeFileModal();
+};
 </script>
 </body>
 </html>
